@@ -16,6 +16,7 @@ static int init_mod_test(void) {
 }
 
 static void exit_mod_test(void) {
+	kmm_exit();
 	printk("test module exit\n");
 }
 
