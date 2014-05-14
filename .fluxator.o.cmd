@@ -1,1 +1,0 @@
-cmd_/home/postal/development/KernelModul/fluxator.o := ld -m elf_x86_64   -r -o /home/postal/development/KernelModul/fluxator.o /home/postal/development/KernelModul/mod_test.o /home/postal/development/KernelModul/printm.o /home/postal/development/KernelModul/kmm.o 
