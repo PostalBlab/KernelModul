@@ -1,21 +1,34 @@
-
 #include "kmm.h"
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <linux/device.h>
 
+#define CLASS_NAME "kmm_class"
+#define DEVICE_NAME "mod_test"
+#define DRIVER_NAME "kernel_monitor"
+
 struct cdev *vcdev = NULL;
 dev_t vdev;
 struct class *myclass = NULL;
+
 struct file_operations fops = {
-	read: device_read,
-	write: device_write,
-	open: device_open,
-	release: device_release
+	.read=device_read,
+	.write=device_write,
+	.open=device_open,
+	.release=device_release
 };
+
 struct device *mydevice = NULL;
 
 int kmm_init(void) {
+	int result = 0;
+
+	if(alloc_chrdev_region(&vdev, 0, 1, DRIVER_NAME)) {
+		printk("alloc_chrdev_region failed\n");
+		return -EIO;
+	}
+
+	printk("KMM: Dynamic device number assignment: DN=%d MAJOR=%d MINOR=%d\n", vdev, MAJOR(vdev),MINOR(vdev));
 
 	vcdev = cdev_alloc();
 
@@ -23,20 +36,24 @@ int kmm_init(void) {
 		return -EIO;
 	}
 
+	//init stuff
 	cdev_init(vcdev, &fops);
+	kobject_set_name(&vcdev->kobj, DRIVER_NAME);
+	vcdev->owner = THIS_MODULE;
 
 
-	cdev_add(vcdev, MAJOR(vcdev->dev), 0);
+	result = cdev_add(vcdev, vdev, 1);
+	if(result < 0) {
+		printk("adding device failed\n");
+		goto fail_device;
+	}
 
-	// returns alway 0...
-	kobject_set_name(&(vcdev->kobj), "kmm_test");
 	
-	alloc_chrdev_region(&(vcdev->dev), 0, 1, "mod_test");
-	myclass = class_create(vcdev->owner, "kmm_test");
+	myclass = class_create(vcdev->owner, CLASS_NAME);
 	if(!myclass)
 		goto fail_class;
 
-	mydevice = device_create(myclass, NULL, vcdev->dev, NULL, "mod_test");
+	mydevice = device_create(myclass, NULL, vdev, NULL, DEVICE_NAME);
 	if(!mydevice)
 		goto fail_device;
 
@@ -64,7 +81,7 @@ void kmm_exit(void) {
 
 	if(vcdev)
 		cdev_del(vcdev);
-		unregister_chrdev_region(MAJOR(vcdev->dev), 0);
+		unregister_chrdev_region(MAJOR(vcdev->dev), 1);
 
 	if(myclass) {
 		class_unregister(myclass);
@@ -79,20 +96,20 @@ void print_debug(void) {
 
 int device_open(struct inode *inode, struct file *file) {
 	printk("device_open\n");
-	return -1;
+	return 0;
 }
 
 int device_release(struct inode *inode, struct file *file) {
 	printk("device_release\n");
-	return -1;
+	return 0;
 }
 
 ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
 	printk("device_read\n");
-	return -1;
+	return 0;
 }
 
 ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *off) {
 	printk("device_write\n");
-	return -1;
+	return 0;
 }
