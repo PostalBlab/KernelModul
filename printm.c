@@ -8,12 +8,14 @@
 
 static list_element_t *head;
 static list_element_t *tail;
+size_t queue_size;
 DEFINE_SPINLOCK(head_lock);
 DEFINE_SPINLOCK(tail_lock);
 
 void init_printm(void) {
 	head = NULL;
 	tail = NULL;
+	queue_size = 0;
 }
 
 int printm(char *format, ...) {
@@ -52,6 +54,7 @@ void enqueue(char *message) {
 	new_element->message = message;
 	new_element->next = NULL;
 	
+	//TODO check for max size and dequeue stuff
 	if(!head) {
 		spin_lock(&head_lock);
 		head = new_element;	

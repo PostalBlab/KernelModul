@@ -1,7 +1,10 @@
 #include "kmm.h"
+#include <linux/delay.h>
+#include <linux/module.h>
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <linux/device.h>
+#include "rbuf.h"
 
 #define CLASS_NAME "kmm_class"
 #define DEVICE_NAME "mod_test"
@@ -22,6 +25,11 @@ struct device *mydevice = NULL;
 
 int kmm_init(void) {
 	int result = 0;
+
+	if(init_rbuf() < 0) {
+		printk("init_rbuf failed\n");
+		return -EIO;
+	}
 
 	if(alloc_chrdev_region(&vdev, 0, 1, DRIVER_NAME)) {
 		printk("alloc_chrdev_region failed\n");
@@ -75,6 +83,7 @@ fail_class:
 }
 
 void kmm_exit(void) {
+	exit_rbuf();
 	if(mydevice && myclass) {
 		device_destroy(myclass, vcdev->dev);
 	}
@@ -95,18 +104,23 @@ void print_debug(void) {
 }
 
 int device_open(struct inode *inode, struct file *file) {
-	printk("device_open\n");
+	register_listener((unsigned long) file);
+	printk("device_open %lu\n", (unsigned long) file);
+	
 	return 0;
 }
 
 int device_release(struct inode *inode, struct file *file) {
+	unregister_listener((unsigned long) file);
 	printk("device_release\n");
 	return 0;
 }
 
 ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
-	printk("device_read\n");
-	return 0;
+	printk("device_read %lu\n", (unsigned long)length);
+	*buffer = 'a';
+	msleep(1000);
+	return 1;
 }
 
 ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *off) {

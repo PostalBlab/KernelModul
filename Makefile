@@ -1,6 +1,6 @@
 ifneq ($(KERNELRELEASE),)
 obj-m	:= fluxator.o 
-fluxator-objs	:= mod_test.o printm.o kmm.o
+fluxator-objs	:= mod_test.o printm.o kmm.o rbuf.o
 
 else
 KDIR := /lib/modules/$(shell uname -r)/build

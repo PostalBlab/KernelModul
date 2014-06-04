@@ -5,10 +5,17 @@ listener_t *listeners[MAX_LISTENER];
 size_t listener_count;
 rbuf_t *rbuf = NULL;
 
+void exit_rbuf(void) {
+	unregister_all_listener();
+
+	if(rbuf)
+		kfree(rbuf);
+}
+
 int init_rbuf(void) {
 	//init rbuf
 	int i = 0;
-	rbuf_t *rbuf = kmalloc(sizeof(rbuf), __GFP_NORETRY);
+	rbuf = kmalloc(sizeof(rbuf_t), __GFP_NORETRY);
 	//memset ist im kernelspace nicht verfügbar bzw. sollte nicht benutzt werden
 	for(i = 0; i < RBUF_SIZE; i++) {
 		rbuf->buffer[i] = '\0';
@@ -25,21 +32,22 @@ int init_rbuf(void) {
 	return 0;
 }
 
-char *read_next_entry(size_t cur_pos) {
-	char *start = NULL;
-	char *end = NULL;
+//gibt zurück wie viele byte geschrieben wurden
+size_t read_next_entry(const unsigned int id, char *user_buffer, const size_t buffer_length) {
+	size_t written = 0;
+	
+	listener_t *cur_listener = get_listener(id);
+	if(!cur_listener) {
+		return 0;
+	}
 
-	//ungültige positionen filtern
-	if(cur_pos > rbuf->cur_tail) {
-		return NULL;
+	while(written < buffer_length - 1) {
+		user_buffer[written++] = rbuf->buffer[cur_listener->cur_pos];
+		next_pos(&(cur_listener->cur_pos));
 	}
-	start = rbuf->buffer + cur_pos;
-	while(rbuf->buffer[cur_pos] != '\n' && rbuf->buffer[cur_pos] != '\0') {
-		next_pos(&cur_pos);
-	}
-	end = rbuf->buffer + cur_pos;
-	//XXX copy string
-	return NULL;
+	user_buffer[written++] = '\0';
+
+	return written;
 }
 
 void next_pos(size_t *cur_pos) {
@@ -50,15 +58,28 @@ void next_pos(size_t *cur_pos) {
 	}
 }
 
+listener_t *get_listener(const unsigned long id) {
+	unsigned int i = 0;
+	while(listeners[i]) {
+		if(listeners[i]->id == id) {
+			return listeners[i];
+		}
+	}
+
+	return NULL;
+}
+
 int register_listener(const unsigned long id) {
 	listener_t *listener = NULL;
+	printk("register listener %lu\n", id);
 	//schauen ob wir nicht schon zu viele listener haben
 	if(listener_count == MAX_LISTENER -1) {
 		return MAX_LISTENER_REACHED;
 	}
+	++listener_count;
 
 	//speicher für einen neuen listener holen
-	listener = kmalloc(sizeof(listener), __GFP_NORETRY);
+	listener = kmalloc(sizeof(listener_t), __GFP_NORETRY);
 	if(!listener) {
 		return LISTENER_MALLOC_FAILED;
 	}
@@ -66,12 +87,13 @@ int register_listener(const unsigned long id) {
 	listener->cur_pos = rbuf->cur_head;
 	listener->id = id;
 
-	listeners[listener_count] = listener;
+	listeners[listener_count - 1] = listener;
 	return 0;
 }
 
 int unregister_listener(const unsigned long id) {
 	unsigned int i = 0;
+	printk("unregister listener %lu\n", id);
 	for(i = 0; i < MAX_LISTENER_REACHED; i++) {
 		if(!listeners[i]) {
 			return LISTENER_NOT_FOUND;
@@ -89,3 +111,12 @@ int unregister_listener(const unsigned long id) {
 	return LISTENER_NOT_FOUND;
 }
 
+void unregister_all_listener(void) {
+	unsigned int i = 0;
+	for(i = 0; i < MAX_LISTENER; i++) {
+		if(listeners[i]) {
+			kfree(listeners[i]);
+			listeners[i] = NULL;
+		}
+	}
+}

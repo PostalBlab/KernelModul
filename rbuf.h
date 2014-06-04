@@ -24,11 +24,14 @@ typedef struct {
 	unsigned long id;
 } listener_t;
 
+void exit_rbuf(void);
 int init_rbuf(void);
-char *read_next_entry(size_t cur_pos);
+size_t read_next_entry(const unsigned int id, char *user_buffer, const size_t buffer_length);
 void next_pos(size_t *cur_pos);
 
+listener_t *get_listener(const unsigned long id);
 int register_listener(const unsigned long id);
 int unregister_listener(const unsigned long id);
+void unregister_all_listener(void);
 
 #endif
