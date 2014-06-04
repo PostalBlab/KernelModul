@@ -1,4 +1,5 @@
 #include "kmm.h"
+#include "printm.h"
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -26,11 +27,6 @@ struct device *mydevice = NULL;
 int kmm_init(void) {
 	int result = 0;
 
-	if(init_rbuf() < 0) {
-		printk("init_rbuf failed\n");
-		return -EIO;
-	}
-
 	if(alloc_chrdev_region(&vdev, 0, 1, DRIVER_NAME)) {
 		printk("alloc_chrdev_region failed\n");
 		return -EIO;
@@ -45,6 +41,11 @@ int kmm_init(void) {
 	}
 
 	//init stuff
+	if(init_rbuf() < 0) {
+		printk("init_rbuf failed\n");
+		return -EIO;
+	}
+	init_printm();
 	cdev_init(vcdev, &fops);
 	kobject_set_name(&vcdev->kobj, DRIVER_NAME);
 	vcdev->owner = THIS_MODULE;
@@ -66,6 +67,9 @@ int kmm_init(void) {
 		goto fail_device;
 
 
+	printm("hello world1");
+	printm("hello world2");
+	printm("hello world3");
 	return 1;
 
 fail_device:
@@ -117,10 +121,12 @@ int device_release(struct inode *inode, struct file *file) {
 }
 
 ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
+	size_t written = 0;
+	check_listeners();	
 	printk("device_read %lu\n", (unsigned long)length);
-	*buffer = 'a';
+	written = read_next_entry((unsigned long) filp, buffer, length);
 	msleep(1000);
-	return 1;
+	return written;
 }
 
 ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *off) {
