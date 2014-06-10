@@ -1,11 +1,16 @@
 #ifndef RBUF_H_
 #define RBUF_H_
 
+#ifdef __KERNEL__
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
-
-#define RBUF_SIZE 2048
+#else
+#include <sys/types.h>
+#include <stdlib.h>
+#include <stdio.h>
+#endif
+#define RBUF_SIZE 50 
 #define MAX_LISTENER 2048
 
 //error defines
@@ -26,11 +31,12 @@ typedef struct {
 
 void exit_rbuf(void);
 int init_rbuf(void);
-size_t read_next_entry(const unsigned int id, char *user_buffer, const size_t buffer_length);
+size_t read_next_entry(const unsigned long id, char *user_buffer, const size_t buffer_length);
 void next_pos(size_t *cur_pos);
-int add_entry(const char *new_entry);
+int add_entry(const char *new_entry, size_t len);
 void next_rbuf(void);
 
+void check_idle_listeners(const size_t len);
 listener_t *get_listener(const unsigned long id);
 int register_listener(const unsigned long id);
 int unregister_listener(const unsigned long id);

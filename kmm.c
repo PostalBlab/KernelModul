@@ -122,14 +122,21 @@ int device_release(struct inode *inode, struct file *file) {
 
 ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
 	size_t written = 0;
+	printk("read offset %i\n", *offset);
 	check_listeners();	
-	printk("device_read %lu\n", (unsigned long)length);
 	written = read_next_entry((unsigned long) filp, buffer, length);
-	msleep(1000);
 	return written;
 }
 
 ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *off) {
-	printk("device_write\n");
-	return 0;
+	char tmp_buf[1000];
+	int i = 0;
+	for(i = 0; i < len; i++) {
+		printk("adding %c from %i\n", buff[i], i);
+		tmp_buf[i] = buff[i];
+	}
+	if(len) {
+		tmp_buf[len] = '\0';
+	}
+	return printm(tmp_buf);
 }
