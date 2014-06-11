@@ -7,13 +7,19 @@
 #include <linux/device.h>
 #include "rbuf.h"
 
+//frequently printm call
+
 #define CLASS_NAME "kmm_class"
 #define DEVICE_NAME "mod_test"
 #define DRIVER_NAME "kernel_monitor"
 
+DECLARE_DELAYED_WORK(workq, freq_message);
+struct workqueue_struct *wq;
+
 struct cdev *vcdev = NULL;
 dev_t vdev;
 struct class *myclass = NULL;
+char termflag = 0;
 
 struct file_operations fops = {
 	.read=device_read,
@@ -66,10 +72,10 @@ int kmm_init(void) {
 	if(!mydevice)
 		goto fail_device;
 
+	wq = create_workqueue("freq_call");
+	INIT_DELAYED_WORK(&workq, freq_message);
+	queue_delayed_work(wq, &workq, 5 * HZ);
 
-	printm("hello world1");
-	printm("hello world2");
-	printm("hello world3");
 	return 1;
 
 fail_device:
@@ -87,6 +93,11 @@ fail_class:
 }
 
 void kmm_exit(void) {
+	termflag = 1;
+	cancel_delayed_work(&workq);
+	flush_delayed_work(&workq);
+	destroy_workqueue(wq);
+
 	exit_rbuf();
 	if(mydevice && myclass) {
 		device_destroy(myclass, vcdev->dev);
@@ -122,9 +133,9 @@ int device_release(struct inode *inode, struct file *file) {
 
 ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset) {
 	size_t written = 0;
-	printk("read offset %i\n", *offset);
 	check_listeners();	
 	written = read_next_entry((unsigned long) filp, buffer, length);
+	printk("written %zu\n", written);
 	return written;
 }
 
@@ -139,4 +150,13 @@ ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *of
 		tmp_buf[len] = '\0';
 	}
 	return printm(tmp_buf);
+}
+
+void freq_message(struct work_struct *bla) {
+	static unsigned int i = 0;
+	if(termflag == 0) {
+		printm("test %i\n", i++);
+		queue_delayed_work(wq, &workq, 2 * HZ);
+	}
+	return;
 }

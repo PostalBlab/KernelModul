@@ -2,6 +2,8 @@
 #define KMM_H_
 
 #include <linux/cdev.h>
+#include <linux/interrupt.h>
+#include <linux/kernel.h>
 
 int kmm_init(void);
 void kmm_exit(void);
@@ -13,5 +15,7 @@ int device_open(struct inode *inode, struct file *file);
 int device_release(struct inode *inode, struct file *file);
 ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset);
 ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *off);
+
+void freq_message(struct work_struct *bla);
 
 #endif

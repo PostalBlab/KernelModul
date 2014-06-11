@@ -1,4 +1,5 @@
 #include "rbuf.h"
+#include <asm/uaccess.h>
 #include "printm.h"
 
 //zugriff auf beide noch nicht threadsafe!
@@ -74,7 +75,7 @@ int add_entry(const char *new_entry, size_t len) {
 		rbuf->buffer[rbuf->cur_tail] = new_entry[i];
 		next_rbuf();
 	}
-	printk("RBUF tail: %i head: %i\n", rbuf->cur_tail, rbuf->cur_head);
+	printk("RBUF tail: %zu head: %zu\n", rbuf->cur_tail, rbuf->cur_head);
 	return i;
 }
 
@@ -97,18 +98,27 @@ size_t read_next_entry(const unsigned long id, char *user_buffer, const size_t b
 		return 0;
 	}
 
+	printk("listener pos %zu cur_tail %zu cur_head %zu\n", cur_listener->cur_pos, rbuf->cur_tail, rbuf->cur_head);
 	while(
 		cur_listener->cur_pos != rbuf->cur_tail && //drauf achten dass wir nicht über tail hinaus lesen
 		written < buffer_length - 1
 	) {
-		user_buffer[written++] = rbuf->buffer[cur_listener->cur_pos];
+		copy_char_to_user(&user_buffer[written], rbuf->buffer[cur_listener->cur_pos]);
+		++written;
 		next_pos(&(cur_listener->cur_pos));
 	}
 	//wenn was geschrieben wurde müssen wir es noch terminieren
 	if(written) {
-		user_buffer[++written] = '\0';
+		copy_char_to_user(&user_buffer[written], '\0');
+		++written;
 	}
+	printk("written to user %s\n", user_buffer);
 	return written;
+}
+
+//copy_to_user wrapper für den user buffer
+inline unsigned long copy_char_to_user(char *buffer, const char character) {
+	return copy_to_user(buffer, &character, 1);
 }
 
 void next_pos(size_t *cur_pos) {
@@ -204,7 +214,7 @@ void check_listeners(void) {
 	unsigned int i = 0;
 	char *tmp = NULL;
 	for(i = 0; i < listener_count; i++) {
-		printk("checking %i with %i\n", listeners[i]->cur_pos, rbuf->cur_tail);
+		printk("checking %zu with %zu\n", listeners[i]->cur_pos, rbuf->cur_tail);
 		if(listeners[i]->cur_pos == rbuf->cur_tail) {
 			printk("dequeue call\n");
 			tmp = dequeue();
