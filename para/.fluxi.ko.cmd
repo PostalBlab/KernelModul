@@ -1,0 +1,1 @@
+cmd_/home/postal/development/KernelModul/para/fluxi.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-3.2.0-4-common/scripts/module-common.lds --build-id  -o /home/postal/development/KernelModul/para/fluxi.ko /home/postal/development/KernelModul/para/fluxi.o /home/postal/development/KernelModul/para/fluxi.mod.o
