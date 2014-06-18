@@ -16,6 +16,5 @@ int main() {
 		size_t read_bytes = read(fd, buffer, 2048);
 		if(read_bytes > 0)
 			printf("%s", buffer);
-		sleep(1);
 	}
 }

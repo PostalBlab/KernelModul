@@ -13,13 +13,9 @@
 #define DEVICE_NAME "mod_test"
 #define DRIVER_NAME "kernel_monitor"
 
-DECLARE_DELAYED_WORK(workq, freq_message);
-struct workqueue_struct *wq;
-
 struct cdev *vcdev = NULL;
 dev_t vdev;
 struct class *myclass = NULL;
-char termflag = 0;
 
 struct file_operations fops = {
 	.read=device_read,
@@ -72,10 +68,6 @@ int kmm_init(void) {
 	if(!mydevice)
 		goto fail_device;
 
-	wq = create_workqueue("freq_call");
-	INIT_DELAYED_WORK(&workq, freq_message);
-	queue_delayed_work(wq, &workq, 5 * HZ);
-
 	return 1;
 
 fail_device:
@@ -93,10 +85,6 @@ fail_class:
 }
 
 void kmm_exit(void) {
-	termflag = 1;
-	cancel_delayed_work(&workq);
-	flush_delayed_work(&workq);
-	destroy_workqueue(wq);
 
 	exit_rbuf();
 	if(mydevice && myclass) {
@@ -152,11 +140,4 @@ ssize_t device_write(struct file *filp, const char *buff, size_t len, loff_t *of
 	return printm(tmp_buf);
 }
 
-void freq_message(struct work_struct *bla) {
-	static unsigned int i = 0;
-	if(termflag == 0) {
-		printm("test %i\n", i++);
-		queue_delayed_work(wq, &workq, 2 * HZ);
-	}
-	return;
-}
+

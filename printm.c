@@ -18,6 +18,7 @@ size_t queue_size;
 #ifdef __KERNEL__
 DEFINE_SPINLOCK(head_lock);
 DEFINE_SPINLOCK(tail_lock);
+EXPORT_SYMBOL(printm);
 #endif
 
 void init_printm(void) {
